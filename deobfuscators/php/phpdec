@@ -1,0 +1,62 @@
+
+#!/usr/bin/perl
+
+use Term::ANSIColor;
+use MIME::Base64;
+use String::HexConvert ':all';
+
+my $file = $ARGV[0];
+my $flux;
+my $output_file;
+my $output_mode = "false";
+my $matched = "true";
+
+my @output_content = ();
+
+if(!($ARGV[1] eq "")) {
+  $output_file = $ARGV[1];
+  $output_mode = "true";
+}
+
+open $flux, $file or die "Could not open $file  : $!";
+my @source_code = <$flux>;
+close $flux;
+
+#while($matched eq "true") {
+  $matched = "false";
+  
+  foreach my $line (@source_code) {
+    my $new_line = $line;
+    $new_line =~ s/\R//g;
+    
+    if(($new_line =~ /base64_decode/)&&(!($new_line =~ /\$base64_decode/))) {
+      my $decoded_string = '';
+      my @line_matches = $new_line =~ m/base64_decode\(['"](.*?)['"]\)/sgi;
+      $matched = "true";
+      
+      foreach my $match (@line_matches) {
+	$decoded_string = decode_base64($match);
+	$new_line =~ s/base64_decode\(["']$match["']\)/"$decoded_string"/;
+	
+      }
+      @line_matches = ();
+    }
+    
+    if(($new_line =~ /hex2bin/)&&(!($new_line =~ /\$hex2bin/))) {
+      my $decoded_string = '';
+      my @line_matches = $new_line =~ m/hex2bin\(['"](.*?)['"]\)/sgi;
+      $matched = "true";
+      
+      foreach my $match (@line_matches) {
+	$decoded_string = hex_to_ascii($match);
+	$new_line =~ s/\Qhex2bin\(["']$match["']\)\E/"$decoded_string"/;
+      }
+    }
+    
+    push(@output_content, $new_line);
+ #   print $new_line . "\n";
+  }
+  @source_code = @output_content;
+#}
+
+foreach my $line (@output_content) { print "$line\n"; };
